@@ -121,7 +121,8 @@ def deal():
         in_play = False
     else:
         game = "HIT or STAND?"
-        
+    if inp.get_text() == 0:
+                inp.set_text('0')    
     if int(inp.get_text())> money:
         bet = money
     else:
@@ -180,6 +181,8 @@ def draw(canvas):
             canvas.draw_text("BANK: "+str(bank), (200,350), 30, "Yellow")
             canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [200 + CARD_BACK_CENTER[0], 100 + CARD_BACK_CENTER[1]], CARD_SIZE)    
         else:
+            if int(inp.get_text()) == 0:
+                bet = 0
             if int(inp.get_text())> money:
                 canvas.draw_text("You don't have "+str(inp.get_text())+'! Only '+ str(money), (200,350), 30, "Yellow")
                 bet = money
@@ -218,6 +221,4 @@ frame.start()
 
 
 # remember to review the gradic rubric
-
-
 
