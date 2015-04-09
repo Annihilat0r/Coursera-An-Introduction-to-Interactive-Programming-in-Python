@@ -12,6 +12,8 @@ CARD_BACK_SIZE = (72, 96)
 CARD_BACK_CENTER = (36, 48)
 card_back = simplegui.load_image("http://storage.googleapis.com/codeskulptor-assets/card_jfitz_back.png")    
 cent = simplegui.load_image('http://s1.sendimage.me/PnFaQnFR.png')
+blackjack = simplegui.load_image('http://s1.sendimage.me/srhlAnGv.png')
+bender = simplegui.load_image('http://s1.sendimage.me/EAbAHnGu.jpeg')
 # initialize some useful global variables
 in_play = False
 money = 330
@@ -20,8 +22,6 @@ bet = 30
 SUITS = ('C', 'S', 'H', 'D')
 RANKS = ('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K')
 VALUES = {'A':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'T':10, 'J':10, 'Q':10, 'K':10}
-debug = False
-
 
 
 # define card class
@@ -84,9 +84,6 @@ class Hand:
             (self.cardsinhand[i]).draw(canvas, [pos[0] +10*i, pos[1]], 0.15*i)
         if self == player or not in_play:
             canvas.draw_text(str(self.get_value()), (pos[0], pos[1]+120), 22, 'White')
-
- 
- 
         
 # define deck class 
 class Deck:
@@ -103,14 +100,10 @@ class Deck:
         return self.deckcards.pop()
     
     def __str__(self):
-        self.deckcards.reverse() #because I use pop() but in real life we don't pick a card from bottom
         ans = ("Cards in Desk: ")
         for i in range(len(self.deckcards)):
             ans += (self.deckcards[i]).suit + (self.deckcards[i]).rank + '; '
-        self.deckcards.reverse()
         return ans
-
-
 
 #define event handlers for buttons
 def deal():
@@ -121,7 +114,7 @@ def deal():
         in_play = False
     else:
         game = "HIT or STAND?"
-    if inp.get_text() == 0:
+    if inp.get_text() == '':
                 inp.set_text('0')    
     if int(inp.get_text())> money:
         bet = money
@@ -129,7 +122,6 @@ def deal():
         bet = int(inp.get_text())
     deck = Deck()
     deck.shuffle()
-    if debug: print deck
     comp = Hand()
     comp.add_card(deck.deal_card())
     player = Hand()
@@ -140,7 +132,6 @@ def deal():
     money -= bet
     bank = bet*2
     in_play = True
-
 
 def hit():
     global in_play, game
@@ -176,10 +167,14 @@ def bet_input(text):
 # draw handler    
 def draw(canvas):
     global in_play, game, money, bank, bet
+    canvas.draw_image(blackjack, (165,66), (330,132), (282,70), (330, 132)) 
+    canvas.draw_image(bender, (75,100), (150,200), (523,70), (150, 200))   
+    
     if not game == "GAME OVER":
+        
         if in_play:
             canvas.draw_text("BANK: "+str(bank), (200,350), 30, "Yellow")
-            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [200 + CARD_BACK_CENTER[0], 100 + CARD_BACK_CENTER[1]], CARD_SIZE)    
+            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [200 + CARD_BACK_CENTER[0], 150 + CARD_BACK_CENTER[1]], CARD_SIZE)    
         else:
             if int(inp.get_text()) == 0:
                 bet = 0
@@ -189,18 +184,23 @@ def draw(canvas):
             else:
                 bet = int(inp.get_text())
                 canvas.draw_text("New deal with bet: "+str(bet)+'?', (200,350), 30, "Yellow")
+        
         player.draw(canvas,(200,400))
-        comp.draw(canvas,(200,100))
+        comp.draw(canvas,(200,150))
+        
         for i in range(len(deck.deckcards)):
             canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [30 + CARD_BACK_CENTER[0], 500 + CARD_BACK_CENTER[1] - 10*i], CARD_SIZE, 1.6 + 0.02*i )    
+        
         canvas.draw_text(game, (200,300), 30, "White")
-
-        canvas.draw_text(str(money), (510,590), 30, "Yellow")
+        canvas.draw_text('$'+ str(money), (515,590), 30, "Yellow")
+        
         i = 0
-        while i < money:
-            i += 10
-            canvas.draw_image(cent, (80,80), (160,160), [550, 550 - 0.5*i], (60, 60))    
+        while i < money/10:
+            i += 1
+            canvas.draw_image(cent, (80,80), (160,160), [550, 550 - 5*i], (60, 60))    
+    
     else: canvas.draw_text(game, (220,300), 30, "White")
+  
     
 # initialization frame
 frame = simplegui.create_frame("Blackjack", 600, 600)
@@ -221,4 +221,3 @@ frame.start()
 
 
 # remember to review the gradic rubric
-
