@@ -9,7 +9,7 @@ CARD_CENTER = (36, 48)
 card_images = simplegui.load_image("http://storage.googleapis.com/codeskulptor-assets/cards_jfitz.png")
 
 CARD_BACK_SIZE = (72, 96)
-CARD_BACK_CENTER = (36, 48)
+CARD_BACK_CENTER = [36, 48]
 card_back = simplegui.load_image("http://storage.googleapis.com/codeskulptor-assets/card_jfitz_back.png")    
 cent = simplegui.load_image('http://s1.sendimage.me/PnFaQnFR.png')
 blackjack = simplegui.load_image('http://s1.sendimage.me/srhlAnGv.png')
@@ -163,6 +163,13 @@ def stand():
     
 def bet_input(text):
     pass
+
+def color():
+    global CARD_BACK_CENTER
+    if CARD_BACK_CENTER[0] < CARD_BACK_SIZE[0]:
+        CARD_BACK_CENTER[0] += CARD_BACK_SIZE[0]
+    else:
+        CARD_BACK_CENTER[0] -= CARD_BACK_SIZE[0]
     
 # draw handler    
 def draw(canvas):
@@ -170,11 +177,11 @@ def draw(canvas):
     canvas.draw_image(blackjack, (165,66), (330,132), (282,70), (330, 132)) 
     canvas.draw_image(bender, (75,100), (150,200), (523,70), (150, 200))   
     
-    if not game == "GAME OVER":
+    if (not game == "GAME OVER") and money <1000:
         
         if in_play:
             canvas.draw_text("BANK: "+str(bank), (200,350), 30, "Yellow")
-            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [200 + CARD_BACK_CENTER[0], 150 + CARD_BACK_CENTER[1]], CARD_SIZE)    
+            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [200 + 36, 150 + CARD_BACK_CENTER[1]], CARD_SIZE)    
         else:
             if int(inp.get_text()) == 0:
                 bet = 0
@@ -189,7 +196,7 @@ def draw(canvas):
         comp.draw(canvas,(200,150))
         
         for i in range(len(deck.deckcards)):
-            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [30 + CARD_BACK_CENTER[0], 500 + CARD_BACK_CENTER[1] - 10*i], CARD_SIZE, 1.6 + 0.02*i )    
+            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [30 + 36, 500 + CARD_BACK_CENTER[1] - 10*i], CARD_SIZE, 1.6 + 0.02*i )    
         
         canvas.draw_text(game, (200,300), 30, "White")
         canvas.draw_text('$'+ str(money), (515,590), 30, "Yellow")
@@ -197,9 +204,24 @@ def draw(canvas):
         i = 0
         while i < money/10:
             i += 1
-            canvas.draw_image(cent, (80,80), (160,160), [550, 550 - 5*i], (60, 60))    
-    
-    else: canvas.draw_text(game, (220,300), 30, "White")
+            canvas.draw_image(cent, (80,80), (160,160), [550, 550 - 4*i], (60, 60))  
+        
+    elif money >= 1000:
+        i = 0
+        x = 0
+        while i < 238:
+            i += 1
+            if x > 160:
+                x -= 155
+            else:
+                x += 2
+            #print x
+            canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [50 + 3*x, 90 + CARD_BACK_CENTER[1] + 1.7*i], CARD_SIZE, 0.05*i)    
+        canvas.draw_text("YOU WIN!", (60,300), 100, "Black")
+        
+    else:
+          
+        canvas.draw_text("GAME OVER", (220,300), 30, "White")
   
     
 # initialization frame
@@ -213,7 +235,9 @@ frame.add_button("Stand", stand, 200)
 inp = frame.add_input("Bet:", bet_input, 50)
 inp.set_text('30')
 frame.set_draw_handler(draw)
-
+frame.add_button("Change deck color", color, 200)
+frame.add_label("", 200)
+frame.add_label("Try to earn $1000 and you will see magic :)", 200)
 
 # get things rolling
 deal()
