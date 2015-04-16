@@ -9,10 +9,10 @@ HEIGHT = 600
 score = 0
 lives = 3
 time = 0.5
-rotate_speed = 0.05
+rotate_speed = 0.08
 speed = 20 / 100.0
-friction = 0.98
-difficult = 10
+friction = 0.97
+difficult = 3
 
 class ImageInfo:
     def __init__(self, center, size, radius = 0, lifespan = None, animated = False):
@@ -46,7 +46,7 @@ class ImageInfo:
 # debris images - debris1_brown.png, debris2_brown.png, debris3_brown.png, debris4_brown.png
 #                 debris1_blue.png, debris2_blue.png, debris3_blue.png, debris4_blue.png, debris_blend.png
 debris_info = ImageInfo([320, 240], [640, 480])
-debris_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris2_blue.png")
+debris_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_brown.png")
 
 # nebula images - nebula_brown.png, nebula_blue.png
 nebula_info = ImageInfo([400, 300], [800, 600])
@@ -93,6 +93,7 @@ class Ship:
         self.pos = [pos[0],pos[1]]
         self.vel = [vel[0],vel[1]]
         self.thrust = False
+        self.shoot = False
         self.angle = angle
         self.angle_vel = 0
         self.image = image
@@ -109,12 +110,13 @@ class Ship:
             self.image_center[0] = self.image_size[0] / 2
             
         canvas.draw_image(self.image, self.image_center, self.image_size , self.pos, self.image_size, self.angle)
+        
 
     def update(self):
+        self.ang = angle_to_vector(self.angle)
         if my_ship.thrust:
-            a = angle_to_vector(self.angle)
-            self.vel[0] += a[0]*speed
-            self.vel[1] += a[1]*speed
+            self.vel[0] += self.ang[0]*speed
+            self.vel[1] += self.ang[1]*speed
               
         self.pos[0] += self.vel[0]
         self.pos[1] += self.vel[1]
@@ -123,9 +125,18 @@ class Ship:
         self.pos[0] = self.pos[0] % WIDTH 
         self.pos[1] = self.pos[1] % HEIGHT 
         self.angle  += self.angle_vel
-    def shoot(self):
+        if self.shoot:
+            self.shooting()
+
+
+        
+    def shooting(self):
         global a_missile
-        a_missile = Sprite([self.pos[0], self.pos[1]], [self.vel[0]*2, self.vel[1]*2], 0, 0, missile_image, missile_info, missile_sound)
+        a_missile = Sprite([self.pos[0] + (self.image_size[0]/2-10)*self.ang[0],
+                            self.pos[1] + (self.image_center[1]-10)*self.ang[1]],
+                           [self.vel[0]*self.ang[0]+5*self.ang[0], 
+                            self.vel[1]*self.ang[1]+5*self.ang[1]],
+                            0, 0, missile_image, missile_info, missile_sound)
        
         
         
@@ -159,17 +170,20 @@ class Sprite:
         
 def keydown_handler(key):
     global my_ship
+    if key == simplegui.KEY_MAP['space']:
+        my_ship.shoot = True  
     if key == simplegui.KEY_MAP['up']:
         my_ship.thrust = True
     if key == simplegui.KEY_MAP['left']:
         my_ship.angle_vel = -rotate_speed
     if key == simplegui.KEY_MAP['right']:
         my_ship.angle_vel = rotate_speed
-    if key == simplegui.KEY_MAP['space']:
-        my_ship.shoot()  
+    
     
 def keyup_handler(key):
     global my_ship
+    if key == simplegui.KEY_MAP['space']:
+        my_ship.shoot = False 
     if key == simplegui.KEY_MAP['up']:
         my_ship.thrust = False
     if key == simplegui.KEY_MAP['left'] or key == simplegui.KEY_MAP['right']:
@@ -202,6 +216,9 @@ def draw(canvas):
     my_ship.update()
     a_rock.update()
     a_missile.update()
+    
+    canvas.draw_text('Lives: 3', [30,30], 30, 'White')
+    canvas.draw_text('Score: 0', [WIDTH - 130,30], 30, 'White')
             
 # timer handler that spawns a rock    
 def rock_spawner():
