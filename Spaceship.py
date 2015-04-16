@@ -1,5 +1,5 @@
 # program template for Spaceship
-import simplegui
+import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 import math
 import random
 
