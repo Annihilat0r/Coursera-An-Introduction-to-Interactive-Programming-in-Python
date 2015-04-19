@@ -1,3 +1,14 @@
+'''
+TO DO:
+1. Class for Upgrade
+2. Rock spawner on high LEVEL
+3. Correct nebula fo 8+ LEVELS
+4. Ship rotate Upgrade
+5. Pause with ship upgrade image
+
+'''
+
+
 # program template for Spaceship
 import simplegui
 import math
@@ -26,6 +37,7 @@ money = 0
 update_speed_cost = 100
 update_frequency_cost = 100
 update_missile_live_cost = 100
+rocks = 0
 
 class ImageInfo:
     def __init__(self, center, size, radius = 0, lifespan = None, animated = False):
@@ -59,15 +71,22 @@ class ImageInfo:
 # debris images - debris1_brown.png, debris2_brown.png, debris3_brown.png, debris4_brown.png
 #                 debris1_blue.png, debris2_blue.png, debris3_blue.png, debris4_blue.png, debris_blend.png
 debris_info = ImageInfo([320, 240], [640, 480])
-debris_image_dict = {1:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_blue.png",
+debris_image_dict = {0:'',
+                     1:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_blue.png",
                      2:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris2_blue.png",
                      3:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris3_blue.png",
-                     4:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris4_blue.png"}
+                     4:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris4_blue.png",
+                     5:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_brown.png",
+                     6:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris2_brown.png",
+                     7:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris3_brown.png",
+                     8:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris4_brown.png",
+                     9:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris_blend.png",}
 debris_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_blue.png")
 
 # nebula images - nebula_brown.png, nebula_blue.png
 nebula_info = ImageInfo([400, 300], [800, 600])
 nebula_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/nebula_blue.f2014.png")
+nebula_image2 = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/nebula_brown.png")
 
 # splash image
 splash_info = ImageInfo([200, 150], [400, 300])
@@ -87,6 +106,11 @@ asteroid_image = simplegui.load_image("http://commondatastorage.googleapis.com/c
 
 # animated explosion - explosion_orange.png, explosion_blue.png, explosion_blue2.png, explosion_alpha.png
 explosion_info = ImageInfo([64, 64], [128, 128], 17, 24, True)
+explosion_image_dict = {0 : "http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/explosion_alpha.png",
+                        1 : "http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/explosion_orange.png",
+                        2 : "http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/explosion_blue.png",
+                        3 : "http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/explosion_blue2.png",
+                        }
 explosion_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/explosion_alpha.png")
 
 #animated explosion ship
@@ -175,9 +199,7 @@ class Ship:
     def shooting(self):
         global a_missile, start_shooting
         start_shooting += 1
-        #print start_shooting
         if (start_shooting % frequency) == 0 and not pause:
-            #print 'SHOOT!'
             a_missile.add(Sprite([self.pos[0] + (self.image_size[0]/2-10)*self.ang[0],
                             self.pos[1] + (self.image_center[1]-10)*self.ang[1]],
                            [self.vel[0]+5*self.ang[0], 
@@ -237,8 +259,7 @@ class Sprite:
                 other_group.remove(object)
                 explosion_index = -1
                 SCORE += 10
-                money += 100
-                LEVEL += .2
+                money += 100 + 20*LEVEL
                 explosion_sound.play()
         return collide
 
@@ -268,7 +289,7 @@ def keyup_handler(key):
 
            
 def draw(canvas):
-    global time, explosion_list_pos, explosion_index, debris_image, splash_image
+    global time, explosion_list_pos, explosion_index, debris_image, splash_image, nebula_image, explosion_image
     
     
     wtime = (time / 4) % WIDTH
@@ -287,7 +308,13 @@ def draw(canvas):
     if play:
         
         if pause: 
-            debris_image = simplegui.load_image(debris_image_dict[int(LEVEL%4)])
+            debris_image = simplegui.load_image(debris_image_dict[int(LEVEL%10)])
+            explosion_image = simplegui.load_image(explosion_image_dict[int(LEVEL%4)])
+            # print LEVEL
+            # print int(LEVEL%10)
+            # print int(LEVEL%4)
+            if LEVEL > 4:
+                    nebula_image = nebula_image2
         else: time += 1
         
         # draw ship and sprites
@@ -327,33 +354,39 @@ def draw(canvas):
             my_ship.update()
             my_ship.group_collide(g_rock)
         canvas.draw_text('Lives: ' + str(LIVES), [30,30], 30, 'White')
-        canvas.draw_text('Score: ' + str(SCORE), [WIDTH - 130,30], 30, 'White')
+        canvas.draw_text('Score: ' + str(SCORE), [WIDTH - 150,30], 30, 'White')
         canvas.draw_text('LVL: ' + str(int(LEVEL)) +' Difficult: ' + str(difficult), [WIDTH/2 - 130,30], 30, 'White')
+        canvas.draw_text('Rocks: ' + str(rocks) +'/'+ str(5 + LEVEL *2), [WIDTH/2 - 80,HEIGHT - 30], 30, 'White')
 
 
     if pause:
         canvas.draw_image(splash_image, splash_info.get_center(), 
                           splash_info.get_size(), [WIDTH / 2, HEIGHT / 2], 
                           splash_info.get_size())
+        canvas.draw_text('Level: ' + str(int(LEVEL)), [WIDTH/2 - 50,400], 30, 'White')
+
             
 def rock_spawner():
-    global a_rock, difficult
+    global a_rock, difficult, rocks, LEVEL, pause
     if not pause:
         difficult = (LEVEL+1)*2
         new_rock_pos = [random.randrange(0,WIDTH), random.randrange(0,HEIGHT)]
         if (abs(new_rock_pos[0] - my_ship.pos[0]) < 150) and (abs(new_rock_pos[1] - my_ship.pos[1]) < 150):
             new_rock_pos[0] += 150   
-            new_rock_pos[1] += 150 
-        g_rock.add(Sprite(new_rock_pos, [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random() * difficult , (random.random()-.5)*0.03*difficult, asteroid_image, asteroid_info))
-
+            new_rock_pos[1] += 150
+        if (rocks < (5 + LEVEL *2)):
+            g_rock.add(Sprite(new_rock_pos, [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random() * difficult , (random.random()-.5)*0.03*difficult, asteroid_image, asteroid_info))
+            rocks += 1
+        elif g_rock ==set([]): 
+            LEVEL += 1
+            rocks = 0
+            pause = True
     
 def click(pos):
     global pause
     center = [WIDTH / 2, HEIGHT / 2]
     size = splash_info.get_size()
-    inwidth = (center[0] - size[0] / 2) < pos[0] < (center[0] + size[0] / 2)
-    inheight = (center[1] - size[1] / 2) < pos[1] < (center[1] + size[1] / 2)
-    if (not play) and inwidth and inheight:
+    if (not play):
         new_game()
     if pause: pause = False
     else : pause = True
@@ -369,32 +402,38 @@ def new_game():
     my_ship.image_center = ship_info.get_center()
     g_rock = set ([])
     a_missile = set([])
-    LIVES = 3
+    LIVES = 10
     timer.start()
-    ########soundtrack.play()
+    soundtrack.play()
     debris_image = simplegui.load_image(debris_image_dict[1])
     
 # UPGRADE SHIP
 def add_speed():
     global speed, update_speed_cost, money
-    speed += .05
-    update_speed_cost *= 3
-    add_speed.set_text('Upgrade Speed for %s' % (update_speed_cost))
-    money -= update_speed_cost
-    
+    if update_speed_cost <= money:
+        speed += .05
+        money -= update_speed_cost
+        update_speed_cost *= 3
+        money_label.set_text('Money: $'+str(money))
+        
+        add_speed.set_text('Upgrade Speed for $%s' % (update_speed_cost))
 def add_frequency():
     global frequency, update_frequency_cost, money
-    frequency -= 2
-    update_frequency_cost *= 3
-    add_frequency.set_text('Upgrade frequency for %s' % (update_frequency_cost))
-    money -= update_frequency_cost
+    if update_frequency_cost <= money:
+        frequency -= 2
+        money -= update_frequency_cost
+        update_frequency_cost *= 3
+        add_frequency.set_text('Upgrade frequency for $%s' % (update_frequency_cost))
+        money_label.set_text('Money: $'+str(money))
     
 def add_missile_live():
     global missile_live, update_missile_live_cost, money
-    missile_live += 20
-    update_missile_live_cost *= 3
-    add_frequency.set_text('Upgrade missile live for %s' % (update_missile_live_cost))
-    money -= update_missile_live_cost    
+    if update_missile_live_cost <= money:
+        missile_live += 20
+        money -= update_missile_live_cost  
+        update_missile_live_cost *= 3
+        add_missile_live.set_text('Upgrade missile live for $%s' % (update_missile_live_cost))
+        money_label.set_text('Money: $'+str(money))
 
 # initialize frame
 frame = simplegui.create_frame("Asteroids", WIDTH, HEIGHT)
