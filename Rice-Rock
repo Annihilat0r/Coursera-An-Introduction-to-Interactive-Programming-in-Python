@@ -6,17 +6,26 @@ import random
 # globals for user interface
 WIDTH = 800
 HEIGHT = 600
-score = 0
-lives = 3
+SCORE = 0
+LIVES = 10
 time = 0.5
 rotate_speed = 0.08
 speed = 20 / 100.0
 friction = 0.97
-difficult = 3
+missile_live = 50
+LEVEL = 1
+difficult = (LEVEL+1)*2
 start_shooting = 0
-frequency = 10
+frequency = 20
 explosion_list_pos = [900,500]
 explosion_index = -1
+play = False
+pause = True
+a = 0
+money = 0
+update_speed_cost = 100
+update_frequency_cost = 100
+update_missile_live_cost = 100
 
 class ImageInfo:
     def __init__(self, center, size, radius = 0, lifespan = None, animated = False):
@@ -50,7 +59,11 @@ class ImageInfo:
 # debris images - debris1_brown.png, debris2_brown.png, debris3_brown.png, debris4_brown.png
 #                 debris1_blue.png, debris2_blue.png, debris3_blue.png, debris4_blue.png, debris_blend.png
 debris_info = ImageInfo([320, 240], [640, 480])
-debris_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_brown.png")
+debris_image_dict = {1:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_blue.png",
+                     2:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris2_blue.png",
+                     3:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris3_blue.png",
+                     4:"http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris4_blue.png"}
+debris_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/debris1_blue.png")
 
 # nebula images - nebula_brown.png, nebula_blue.png
 nebula_info = ImageInfo([400, 300], [800, 600])
@@ -65,7 +78,7 @@ ship_info = ImageInfo([45, 45], [90, 90], 35)
 ship_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/double_ship.png")
 
 # missile image - shot1.png, shot2.png, shot3.png
-missile_info = ImageInfo([5,5], [10, 10], 3, 150)
+missile_info = ImageInfo([5,5], [10, 10], 3, missile_live)
 missile_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/shot2.png")
 
 # asteroid images - asteroid_blue.png, asteroid_brown.png, asteroid_blend.png
@@ -76,11 +89,16 @@ asteroid_image = simplegui.load_image("http://commondatastorage.googleapis.com/c
 explosion_info = ImageInfo([64, 64], [128, 128], 17, 24, True)
 explosion_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/explosion_alpha.png")
 
+#animated explosion ship
+explosion_image_ship_info = ImageInfo([50, 50], [100, 100], 17, 9, True)
+explosion_image_ship = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/explosion.hasgraphics.png")
+
 # sound assets purchased from sounddogs.com, please do not redistribute
 soundtrack = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/soundtrack.mp3")
 missile_sound = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/missile.mp3")
 missile_sound.set_volume(.5)
 ship_thrust_sound = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/thrust.mp3")
+ship_thrust_sound.set_volume(.5)
 explosion_sound = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/explosion.mp3")
 
 # helper functions to handle transformations
@@ -106,54 +124,78 @@ class Ship:
         self.radius = info.get_radius()
         self.frequency = frequency
         
+        
     def draw(self,canvas):
-        if self.thrust:
+        global a, play, pause
+        
+        if self.thrust and not pause:
             self.image_center[0] = self.image_size[0] / 2 + ship_info.size[0]
             ship_thrust_sound.play()
         else:
             ship_thrust_sound.rewind()
             self.image_center[0] = self.image_size[0] / 2
             
+        #canvas.draw_circle(self.pos, 150, 1, "White", "White")
+        
+        if LIVES < 1:
+            pause = True
+            self.image = explosion_image_ship
+            self.image_center = [50,50]
+            a += 1
+            explosion_index_ship = [a % 9//1, (a // 9) % 9]
+            self.image_center[0] = 50 + explosion_index_ship[0] * 100 
+            self.image_center[1] = 50 + explosion_index_ship[1] * 100 
         canvas.draw_image(self.image, self.image_center, self.image_size , self.pos, self.image_size, self.angle)
+        if a == 80:
+            ship_thrust_sound.rewind()
+            play = False
+            soundtrack.rewind()
+            
         
-
     def update(self):
-        self.ang = angle_to_vector(self.angle)
-        if my_ship.thrust:
-            self.vel[0] += self.ang[0]*speed
-            self.vel[1] += self.ang[1]*speed
-              
-        self.pos[0] += self.vel[0]
-        self.pos[1] += self.vel[1]
-        self.vel[0] *= friction
-        self.vel[1] *= friction
-        self.pos[0] = self.pos[0] % WIDTH 
-        self.pos[1] = self.pos[1] % HEIGHT 
-        self.angle  += self.angle_vel
-        if self.shoot:
-            self.shooting()
-        
+        if not pause:
+            self.ang = angle_to_vector(self.angle)
+            if my_ship.thrust:
+                self.vel[0] += self.ang[0]*speed
+                self.vel[1] += self.ang[1]*speed
 
+            self.pos[0] += self.vel[0]
+            self.pos[1] += self.vel[1]
+            self.vel[0] *= friction
+            self.vel[1] *= friction
+            self.pos[0] = self.pos[0] % WIDTH 
+            self.pos[1] = self.pos[1] % HEIGHT 
+            self.angle  += self.angle_vel
+            speed_draw = abs(round(self.vel[0],1))+abs(round(self.vel[1],1))
+            c_speed_label.set_text('Speed: ['+str(speed_draw)+']')
+            money_label.set_text('Money: $'+str(money))
+            if self.shoot:
+                self.shooting()
 
-        
     def shooting(self):
         global a_missile, start_shooting
         start_shooting += 1
-        if (start_shooting % self.frequency) == 0:
+        #print start_shooting
+        if (start_shooting % frequency) == 0 and not pause:
+            #print 'SHOOT!'
             a_missile.add(Sprite([self.pos[0] + (self.image_size[0]/2-10)*self.ang[0],
                             self.pos[1] + (self.image_center[1]-10)*self.ang[1]],
-                           [self.vel[0]*self.ang[0]+5*self.ang[0], 
-                            self.vel[1]*self.ang[1]+5*self.ang[1]],
+                           [self.vel[0]+5*self.ang[0], 
+                            self.vel[1]+5*self.ang[1]],
                             0, 0, missile_image, missile_info, missile_sound))
        
     def group_collide(self, other_group):
+        global explosion_list_pos, explosion_index, LIVES, a
         collide = False
         for object in list(other_group):
             if (abs(self.pos[0] - object.pos[0]) < self.radius+object.radius) and (abs(self.pos[1] - object.pos[1]) < self.radius+object.radius): 
-                print 'Collide!'
                 other_group.remove(object)
-                
-                
+                explosion_list_pos = object.pos
+                explosion_index = -1
+                LIVES -= 1
+                explosion_sound.play()
+        
+              
 
 # Sprite class
 class Sprite:
@@ -166,7 +208,7 @@ class Sprite:
         self.image_center = info.get_center()
         self.image_size = info.get_size()
         self.radius = info.get_radius()
-        self.lifespan = info.get_lifespan()
+        self.lifespan = missile_live
         self.animated = info.get_animated()
         self.age = 0
         if sound:
@@ -186,7 +228,7 @@ class Sprite:
         self.lifespan -= 1
         
     def group_collide(self, other_group):
-        global explosion_list_pos, explosion_index
+        global explosion_list_pos, explosion_index, SCORE, LEVEL, money
         collide = False
         for object in list(other_group):
             if (abs(self.pos[0] - object.pos[0]) < self.radius+object.radius) and (abs(self.pos[1] - object.pos[1]) < self.radius+object.radius): 
@@ -194,16 +236,17 @@ class Sprite:
                 explosion_list_pos = object.pos
                 other_group.remove(object)
                 explosion_index = -1
-                
-       
+                SCORE += 10
+                money += 100
+                LEVEL += .2
+                explosion_sound.play()
         return collide
 
-
-    
     
 def keydown_handler(key):
-    global my_ship
+    global my_ship, start_shooting
     if key == simplegui.KEY_MAP['space']:
+        start_shooting = frequency -1
         my_ship.shoot = True  
     if key == simplegui.KEY_MAP['up']:
         my_ship.thrust = True
@@ -214,9 +257,8 @@ def keydown_handler(key):
     
     
 def keyup_handler(key):
-    global my_ship, start_shooting
+    global my_ship
     if key == simplegui.KEY_MAP['space']:
-        start_shooting = frequency -1
         my_ship.shoot = False 
     if key == simplegui.KEY_MAP['up']:
         my_ship.thrust = False
@@ -226,75 +268,156 @@ def keyup_handler(key):
 
            
 def draw(canvas):
-    global time, explosion_list_pos, explosion_index
+    global time, explosion_list_pos, explosion_index, debris_image, splash_image
     
-    # animiate background
-    time += 1
+    
     wtime = (time / 4) % WIDTH
     center = debris_info.get_center()
     size = debris_info.get_size()
     canvas.draw_image(nebula_image, nebula_info.get_center(), nebula_info.get_size(), [WIDTH / 2, HEIGHT / 2], [WIDTH, HEIGHT])
     canvas.draw_image(debris_image, center, size, (wtime - WIDTH / 2, HEIGHT / 2), (WIDTH, HEIGHT))
     canvas.draw_image(debris_image, center, size, (wtime + WIDTH / 2, HEIGHT / 2), (WIDTH, HEIGHT))
-
-    # draw ship and sprites
-    my_ship.pos[0] = my_ship.pos[0] % 800 
-    my_ship.pos[1] = my_ship.pos[1] % 600 
-    my_ship.draw(canvas)
+    
+    #UPGRADE LABELS, BUTTONS
+    speed_label.set_text('Speed: '+str(int(speed*100)))
+    frequency_label.set_text('Frequency: '+str(100.0/frequency))
+    missile_live_label.set_text('Missile live: '+str(int(missile_live)))
 
     
-    explosion_index = (explosion_index +1)%25//1
-    if explosion_index == 24: explosion_list_pos = [900,500]
-    canvas.draw_image(explosion_image, 
-                        [explosion_info.get_center()[0] + explosion_index * explosion_info.get_size()[0], 
-                         explosion_info.get_center()[1]], 
-                         explosion_info.get_size(), explosion_list_pos, explosion_info.get_size())    
-    
-    for rock in g_rock:
-        rock.draw(canvas)
-        rock.update()
-       
+    if play:
         
-    for missile in list(a_missile):
-        missile.draw(canvas)
-        missile.update()
-        if missile.lifespan == 0:
-            try: 
-                a_missile.remove(missile)
-            except:
-                pass
-        if missile.group_collide(g_rock):
-            a_missile.remove(missile)
-               
-    
-    my_ship.update()
-    my_ship.group_collide(g_rock)
-    
-    
-    canvas.draw_text('Lives: 3', [30,30], 30, 'White')
-    canvas.draw_text('Score: 0', [WIDTH - 130,30], 30, 'White')
+        if pause: 
+            debris_image = simplegui.load_image(debris_image_dict[int(LEVEL%4)])
+        else: time += 1
+        
+        # draw ship and sprites
+        my_ship.pos[0] = my_ship.pos[0] % 800 
+        my_ship.pos[1] = my_ship.pos[1] % 600 
+        my_ship.draw(canvas)
+
+        explosion_index = (explosion_index +1)%25//1
+        if explosion_index == 24: explosion_list_pos = [900,500]
+        canvas.draw_image(explosion_image, 
+                            [explosion_info.get_center()[0] + explosion_index * explosion_info.get_size()[0], 
+                             explosion_info.get_center()[1]], 
+                             explosion_info.get_size(), explosion_list_pos, explosion_info.get_size())    
+        
+        
+        for rock in g_rock:
+                rock.draw(canvas)
+                if not pause:
+                    rock.update()
+
+        for missile in list(a_missile):
+            missile.draw(canvas)
+            if not pause:
+                missile.update()
+                if missile.lifespan == 0:
+                    try: 
+                        a_missile.remove(missile)
+                    except:
+                        pass
+                if missile.group_collide(g_rock):
+                    try: 
+                        a_missile.remove(missile)
+                    except:
+                        pass
+
+        if not pause:
+            my_ship.update()
+            my_ship.group_collide(g_rock)
+        canvas.draw_text('Lives: ' + str(LIVES), [30,30], 30, 'White')
+        canvas.draw_text('Score: ' + str(SCORE), [WIDTH - 130,30], 30, 'White')
+        canvas.draw_text('LVL: ' + str(int(LEVEL)) +' Difficult: ' + str(difficult), [WIDTH/2 - 130,30], 30, 'White')
+
+
+    if pause:
+        canvas.draw_image(splash_image, splash_info.get_center(), 
+                          splash_info.get_size(), [WIDTH / 2, HEIGHT / 2], 
+                          splash_info.get_size())
             
-# timer handler that spawns a rock    
 def rock_spawner():
-    global a_rock
-    g_rock.add(Sprite([random.randrange(0,WIDTH), random.randrange(0,HEIGHT)], [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random(), random.random()*0.1, asteroid_image, asteroid_info))
-
+    global a_rock, difficult
+    if not pause:
+        difficult = (LEVEL+1)*2
+        new_rock_pos = [random.randrange(0,WIDTH), random.randrange(0,HEIGHT)]
+        if (abs(new_rock_pos[0] - my_ship.pos[0]) < 150) and (abs(new_rock_pos[1] - my_ship.pos[1]) < 150):
+            new_rock_pos[0] += 150   
+            new_rock_pos[1] += 150 
+        g_rock.add(Sprite(new_rock_pos, [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random() * difficult , (random.random()-.5)*0.03*difficult, asteroid_image, asteroid_info))
 
     
+def click(pos):
+    global pause
+    center = [WIDTH / 2, HEIGHT / 2]
+    size = splash_info.get_size()
+    inwidth = (center[0] - size[0] / 2) < pos[0] < (center[0] + size[0] / 2)
+    inheight = (center[1] - size[1] / 2) < pos[1] < (center[1] + size[1] / 2)
+    if (not play) and inwidth and inheight:
+        new_game()
+    if pause: pause = False
+    else : pause = True
+        
+def new_game():
+    global play, g_rock, a_missile, my_ship, LIVES, a, LEVEL, SCORE
+    SCORE = 0
+    a = 0
+    play = True
+    LEVEL = 1
+    my_ship = Ship([WIDTH / 2, HEIGHT / 2], [0, 0], 0, ship_image, ship_info)
+    my_ship.image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/double_ship.png")
+    my_ship.image_center = ship_info.get_center()
+    g_rock = set ([])
+    a_missile = set([])
+    LIVES = 3
+    timer.start()
+    ########soundtrack.play()
+    debris_image = simplegui.load_image(debris_image_dict[1])
+    
+# UPGRADE SHIP
+def add_speed():
+    global speed, update_speed_cost, money
+    speed += .05
+    update_speed_cost *= 3
+    add_speed.set_text('Upgrade Speed for %s' % (update_speed_cost))
+    money -= update_speed_cost
+    
+def add_frequency():
+    global frequency, update_frequency_cost, money
+    frequency -= 2
+    update_frequency_cost *= 3
+    add_frequency.set_text('Upgrade frequency for %s' % (update_frequency_cost))
+    money -= update_frequency_cost
+    
+def add_missile_live():
+    global missile_live, update_missile_live_cost, money
+    missile_live += 20
+    update_missile_live_cost *= 3
+    add_frequency.set_text('Upgrade missile live for %s' % (update_missile_live_cost))
+    money -= update_missile_live_cost    
+
 # initialize frame
 frame = simplegui.create_frame("Asteroids", WIDTH, HEIGHT)
 
-# initialize ship and two sprites
-my_ship = Ship([WIDTH / 2, HEIGHT / 2], [0, 0], 0, ship_image, ship_info)
-g_rock = set ([Sprite([random.randrange(0,WIDTH), random.randrange(0,HEIGHT)], [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random(), random.random()*0.1, asteroid_image, asteroid_info)])
-a_missile = set([Sprite([random.randrange(0,WIDTH), random.randrange(0,HEIGHT)], [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random(), random.random()*0.1, missile_image, missile_info, missile_sound)])
+c_speed_label = frame.add_label('Speed: 0')
+money_label = frame.add_label('Money: $0')
+just_label = frame.add_label('_________________________')
+just_label2 = frame.add_label('SHIP CHARACTERISTIC')
+
+speed_label = frame.add_label('Speed: '+str(int(speed*100)))
+add_speed = frame.add_button('Upgrade Speed for $100', add_speed)
+frequency_label = frame.add_label('Missile frequency: '+str(int(100/frequency)))
+add_frequency = frame.add_button('Upgrade frequency for $100', add_frequency)
+missile_live_label = frame.add_label('Missile live: '+str(int(100/frequency)))
+add_missile_live = frame.add_button('Upgrade missile live for $100', add_missile_live)
 
 # register handlers
 frame.set_draw_handler(draw)
 frame.set_keydown_handler(keydown_handler)
 frame.set_keyup_handler(keyup_handler)
-timer = simplegui.create_timer(1000.0, rock_spawner)
+timer = simplegui.create_timer(2000.0 - difficult * 50, rock_spawner)
+frame.set_mouseclick_handler(click)
 
 # get things rolling
-timer.start()
+
 frame.start()
