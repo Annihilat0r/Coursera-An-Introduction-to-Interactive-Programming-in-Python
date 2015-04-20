@@ -5,7 +5,7 @@ TO DO:
 3. Correct nebula fo 8+ LEVELS
 4. Ship rotate Upgrade
 5. Pause with ship upgrade image
-http://www.codeskulptor.org/#user39_KB7Ha2hrfF_1.py
+
 '''
 
 
@@ -20,10 +20,10 @@ HEIGHT = 600
 SCORE = 0
 LIVES = 10
 time = 0.5
-rotate_speed = 0.05
+rotate_speed = 0.03
 speed = 10 / 100.0
 friction = 0.97
-missile_live = 20
+missile_live = 220
 frequency = 50
 LEVEL = 1
 difficult = (LEVEL)*2
@@ -97,8 +97,8 @@ ship_info = ImageInfo([45, 45], [90, 90], 35)
 ship_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/double_ship.png")
 
 # missile image - shot1.png, shot2.png, shot3.png
-missile_info = ImageInfo([5,5], [10, 10], 3, missile_live)
-missile_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/shot2.png")
+missile_info = ImageInfo([10,10], [20, 20], 3, missile_live)
+missile_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/shot3.png")
 
 # asteroid images - asteroid_blue.png, asteroid_brown.png, asteroid_blend.png
 asteroid_info = ImageInfo([45, 45], [90, 90], 40)
@@ -121,7 +121,8 @@ explosion_image_ship_info = ImageInfo([50, 50], [100, 100], 17, 9, True)
 explosion_image_ship = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/explosion.hasgraphics.png")
 
 # sound assets purchased from sounddogs.com, please do not redistribute
-soundtrack = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/soundtrack.mp3")
+soundtrack_old = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/soundtrack.mp3")
+soundtrack = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/Epoq-Lepidoptera.ogg")
 missile_sound = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/missile.mp3")
 missile_sound.set_volume(.5)
 ship_thrust_sound = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/thrust.mp3")
@@ -153,6 +154,7 @@ class Ship:
         self.speed = speed
         self.missile_live = missile_live
         self.rotate_speed = rotate_speed 
+        self.missile_speed = 10
         
     def draw(self,canvas):
         global a, play, pause
@@ -185,8 +187,8 @@ class Ship:
         if not pause:
             self.ang = angle_to_vector(self.angle)
             if my_ship.thrust:
-                self.vel[0] += self.ang[0]*self.speed
-                self.vel[1] += self.ang[1]*self.speed
+                self.vel[0] += self.ang[0]*speedy.val
+                self.vel[1] += self.ang[1]*speedy.val
 
             self.pos[0] += self.vel[0]
             self.pos[1] += self.vel[1]
@@ -204,11 +206,12 @@ class Ship:
     def shooting(self):
         global a_missile, start_shooting
         start_shooting += 1
+        print missile_info.get_size()
         if (start_shooting % self.frequency) == 0 and not pause:
             a_missile.add(Sprite([self.pos[0] + (self.image_size[0]/2-10)*self.ang[0],
                             self.pos[1] + (self.image_center[1]-10)*self.ang[1]],
-                           [self.vel[0]+5*self.ang[0], 
-                            self.vel[1]+5*self.ang[1]],
+                           [self.vel[0]+self.missile_speed*self.ang[0], 
+                            self.vel[1]+self.missile_speed*self.ang[1]],
                             0, 0, missile_image, missile_info, missile_sound))
        
     def group_collide(self, other_group):
@@ -265,7 +268,7 @@ class Sprite:
                 other_group.remove(object)
                 explosion_index = -1
                 SCORE += 10
-                money_earn = 100 + 10*difficult
+                money_earn = 10 + 20*difficult
                 money += money_earn
                 explosion_sound.play()
         return collide
@@ -275,14 +278,14 @@ def keydown_handler(key):
     global my_ship, start_shooting, pause
     if play:
         if key == simplegui.KEY_MAP['space']:
-            start_shooting = frequency -1
+            start_shooting = my_ship.frequency -1
             my_ship.shoot = True  
         if key == simplegui.KEY_MAP['up']:
             my_ship.thrust = True
         if key == simplegui.KEY_MAP['left']:
-            my_ship.angle_vel = -rotate_speed
+            my_ship.angle_vel = -my_ship.rotate_speed
         if key == simplegui.KEY_MAP['right']:
-            my_ship.angle_vel = rotate_speed
+            my_ship.angle_vel = my_ship.rotate_speed
         pause = False    
         if key == 27:
             pause = True
@@ -317,7 +320,7 @@ def draw(canvas):
     try:
         speed_label.set_text('Speed: '+str(int(my_ship.speed*100)))
         frequency_label.set_text('Frequency: '+str(100.0/my_ship.frequency))
-        missile_live_label.set_text('Missile live: '+str(int(my_ship.missile_live)))
+        missile_live_label.set_text('Missile live: '+str(int(my_ship.missile_living)))
     except:pass
 
     
@@ -381,10 +384,11 @@ def rock_spawner():
     global a_rock, rocks, LEVEL, pause, difficult
     if not pause:
         new_rock_pos = [random.randrange(0,WIDTH), random.randrange(0,HEIGHT)]
-        if (abs(new_rock_pos[0] - my_ship.pos[0]) < my_ship.radius()+50) and (abs(new_rock_pos[1] - my_ship.pos[1]) < my_ship.radius()+50):
+#        print my_ship.radius()
+        if (abs(new_rock_pos[0] - my_ship.pos[0]) < my_ship.radius+50) and (abs(new_rock_pos[1] - my_ship.pos[1]) < my_ship.radius+50):
             new_rock_pos[0] += 150   
             new_rock_pos[1] += 150
-        if (rocks < (0 + LEVEL *2)):
+        if (rocks < (10 + LEVEL *2)):
             g_rock.add(Sprite(new_rock_pos, [(random.random()-0.5)*difficult, (random.random()-0.5)*difficult], random.random() * difficult , (random.random()-.5)*0.03*difficult, asteroid_image, asteroid_info))
             rocks += 1
         elif g_rock ==set([]): 
@@ -419,46 +423,52 @@ def new_game():
     a_missile = set([])
     LIVES = 10
     timer.start()
-    soundtrack.play()
+    ######soundtrack.play()
     debris_image = simplegui.load_image(debris_image_dict[1])
     
 # UPGRADE SHIP
 class Upgrade:
-    def __init__(self, val, upd_val, upd_cost, text):
+    def __init__(self, name, val, upd_val, upd_cost):
         self.val = val
         self.upd_val = upd_val
         self.upd_cost = upd_cost
-        self.text = text
-def add_speed():
-    global my_ship, update_speed_cost, money, upd_speed
-    if update_speed_cost <= money:
-        my_ship.speed += .02
-        upd_speed += 1
-        money -= update_speed_cost
-        update_speed_cost = update_speed_cost + 150*upd_speed
-        money_label.set_text('Money: $'+str(money))
+        self.rang = 1
+        self.name = name
+        self.text = 'Upgrade to %s (%s) for $%s' % (self.name, self.rang+1, self.upd_cost)
         
-        add_speed.set_text('Upgrade to Speed (%s) for $%s' % (upd_speed+2, update_speed_cost))
-def add_frequency():
-    global my_ship, frequency, update_frequency_cost, money, upd_freq
-    if update_frequency_cost <= money:
-        my_ship.frequency -= 4
-        upd_freq += 1
-        money -= update_frequency_cost
-        update_frequency_cost += 100*(upd_freq)
-        add_frequency.set_text('Upgrade to frequency (%s) for $%s' % (upd_freq+2, update_frequency_cost))
-        money_label.set_text('Money: $'+str(money))
-    
-def add_missile_live():
-    global my_ship, missile_live, update_missile_live_cost, money, upd_miss
-    if update_missile_live_cost <= money:
-        my_ship.missile_live += 10
-        upd_miss += 1
-        money -= update_missile_live_cost  
-        update_missile_live_cost = update_missile_live_cost + 250*upd_miss
-        add_missile_live.set_text('Upgrade to missile live (%s) for $%s' % (upd_miss+2, update_missile_live_cost))
-        money_label.set_text('Money: $'+str(money))
+    def buy(self, button):
+        global money
+        print self.upd_cost
+        if money >= self.upd_cost:
+            self.val += self.upd_val 
+            self.rang += 1
+            money -= self.upd_cost
+            self.upd_cost += 2*self.upd_cost
+            self.text = 'Upgrade to %s (%s) for $%s' % (self.name, self.rang+1, self.upd_cost)
+            button.set_text(self.text)
+            not_money_label.set_text('')
+        else:
+            not_money_label.set_text('Not enough money!')
 
+speedy = Upgrade('Speed', speed, 0.05, 150)   
+freq = Upgrade('Frequency', frequency, -5, 100)
+missile_living = Upgrade('Missile live', missile_live, 10, 200)
+rotate_speedy = Upgrade('Rotate_speed', rotate_speed, 0.01, 200)
+
+def add_speed():
+    speedy.buy(add_speed)
+    my_ship.speed = speedy.val
+def add_frequency():
+    freq.buy(add_frequency)
+    my_ship.frequency = freq.val
+def add_missile_live():
+    missile_living.buy(add_missile_live)
+    my_ship.missile_live = missile_living.val
+def add_rotate_speed():
+    rotate_speedy.buy(add_rotate_speed)
+    my_ship.rotate_speed = rotate_speedy.val
+    print my_ship.rotate_speed
+    
 # initialize frame
 frame = simplegui.create_frame("Asteroids", WIDTH, HEIGHT)
 
@@ -473,6 +483,12 @@ frequency_label = frame.add_label('Missile frequency: '+str(int(100/frequency)))
 add_frequency = frame.add_button('Upgrade to frequency (2) for $100', add_frequency)
 missile_live_label = frame.add_label('Missile live: '+str(int(100/frequency)))
 add_missile_live = frame.add_button('Upgrade to missile live (2) for $100', add_missile_live)
+
+
+rotate_speed_label = frame.add_label('Rotate_speed: '+str(int(1000*rotate_speed)))
+add_rotate_speed = frame.add_button('Upgrade rotate speed (2) for $100', add_rotate_speed)
+
+not_money_label = frame.add_label('')
 
 # register handlers
 frame.set_draw_handler(draw)
