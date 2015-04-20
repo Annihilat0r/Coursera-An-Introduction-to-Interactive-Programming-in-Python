@@ -38,6 +38,9 @@ update_speed_cost = 100
 update_frequency_cost = 100
 update_missile_live_cost = 100
 rocks = 0
+upd_freq = 0
+upd_speed = 0
+upd_miss = 0
 
 class ImageInfo:
     def __init__(self, center, size, radius = 0, lifespan = None, animated = False):
@@ -259,7 +262,7 @@ class Sprite:
                 other_group.remove(object)
                 explosion_index = -1
                 SCORE += 10
-                money += 100 + 20*LEVEL
+                money += 100 + 10*difficult
                 explosion_sound.play()
         return collide
 
@@ -367,9 +370,8 @@ def draw(canvas):
 
             
 def rock_spawner():
-    global a_rock, difficult, rocks, LEVEL, pause
+    global a_rock, rocks, LEVEL, pause
     if not pause:
-        difficult = (LEVEL+1)*2
         new_rock_pos = [random.randrange(0,WIDTH), random.randrange(0,HEIGHT)]
         if (abs(new_rock_pos[0] - my_ship.pos[0]) < 150) and (abs(new_rock_pos[1] - my_ship.pos[1]) < 150):
             new_rock_pos[0] += 150   
@@ -383,12 +385,18 @@ def rock_spawner():
             pause = True
     
 def click(pos):
-    global pause
-    center = [WIDTH / 2, HEIGHT / 2]
+    global pause, timer, difficult, LEVEL
+    
     size = splash_info.get_size()
     if (not play):
         new_game()
-    if pause: pause = False
+    if pause: 
+        difficult = LEVEL * 2
+        pause = False
+        timer.stop()
+        if LEVEL < 10:
+            timer = simplegui.create_timer(2000 - (difficult*50), rock_spawner)
+        timer.start()
     else : pause = True
         
 def new_game():
@@ -409,29 +417,32 @@ def new_game():
     
 # UPGRADE SHIP
 def add_speed():
-    global speed, update_speed_cost, money
+    global speed, update_speed_cost, money, upd_speed
     if update_speed_cost <= money:
-        speed += .05
+        speed += .02
+        upd_speed += 1
         money -= update_speed_cost
-        update_speed_cost *= 3
+        update_speed_cost = update_speed_cost + 150*upd_speed
         money_label.set_text('Money: $'+str(money))
         
         add_speed.set_text('Upgrade Speed for $%s' % (update_speed_cost))
 def add_frequency():
-    global frequency, update_frequency_cost, money
+    global frequency, update_frequency_cost, money, upd_freq
     if update_frequency_cost <= money:
         frequency -= 2
+        upd_freq += 1
         money -= update_frequency_cost
-        update_frequency_cost *= 3
+        update_frequency_cost = update_frequency_cost + 500*upd_freq
         add_frequency.set_text('Upgrade frequency for $%s' % (update_frequency_cost))
         money_label.set_text('Money: $'+str(money))
     
 def add_missile_live():
-    global missile_live, update_missile_live_cost, money
+    global missile_live, update_missile_live_cost, money, upd_miss
     if update_missile_live_cost <= money:
-        missile_live += 20
+        missile_live += 10
+        upd_miss += 1
         money -= update_missile_live_cost  
-        update_missile_live_cost *= 3
+        update_missile_live_cost = update_missile_live_cost + 250*upd_miss
         add_missile_live.set_text('Upgrade missile live for $%s' % (update_missile_live_cost))
         money_label.set_text('Money: $'+str(money))
 
@@ -454,7 +465,7 @@ add_missile_live = frame.add_button('Upgrade missile live for $100', add_missile
 frame.set_draw_handler(draw)
 frame.set_keydown_handler(keydown_handler)
 frame.set_keyup_handler(keyup_handler)
-timer = simplegui.create_timer(2000.0 - difficult * 50, rock_spawner)
+timer = simplegui.create_timer(2000, rock_spawner)
 frame.set_mouseclick_handler(click)
 
 # get things rolling
