@@ -1,11 +1,6 @@
 '''
 TO DO:
-1. Class for Upgrade
-2. Rock spawner on high LEVEL
 3. Correct nebula fo 8+ LEVELS
-4. Ship rotate Upgrade
-5. Pause with ship upgrade image
-
 '''
 
 
@@ -23,8 +18,8 @@ time = 0.5
 rotate_speed = 0.03
 speed = 10 / 100.0
 friction = 0.97
-missile_live = 220
-frequency = 50
+missile_live = 100
+frequency = 30
 LEVEL = 1
 difficult = (LEVEL)*2
 start_shooting = 0
@@ -33,7 +28,7 @@ explosion_index = -1
 play = False
 pause = True
 a = 0
-money = 0
+money = 100000
 update_speed_cost = 100
 update_frequency_cost = 100
 update_missile_live_cost = 100
@@ -42,6 +37,10 @@ upd_freq = 0
 upd_speed = 0
 upd_miss = 0
 money_earn = 0
+money_multiply = 1
+acc = 0.97
+missile_speed = 1
+frame = simplegui.create_frame("Asteroids", WIDTH, HEIGHT)
 
 class ImageInfo:
     def __init__(self, center, size, radius = 0, lifespan = None, animated = False):
@@ -129,6 +128,8 @@ ship_thrust_sound = simplegui.load_sound("http://commondatastorage.googleapis.co
 ship_thrust_sound.set_volume(.5)
 explosion_sound = simplegui.load_sound("http://commondatastorage.googleapis.com/codeskulptor-assets/sounddogs/explosion.mp3")
 
+upgrade_img = simplegui.load_image("http://s2.postimg.org/pgkrawbxl/789.png")
+
 # helper functions to handle transformations
 def angle_to_vector(ang):
     return [math.cos(ang), math.sin(ang)]
@@ -150,12 +151,8 @@ class Ship:
         self.image_center = info.get_center()
         self.image_size = info.get_size()
         self.radius = info.get_radius()
-        self.frequency = frequency
-        self.speed = speed
-        self.missile_live = missile_live
-        self.rotate_speed = rotate_speed 
-        self.missile_speed = 10
-        
+    
+        #[freq, missile_living, missile_speedy, rotate_speedy, speedy, acc]
     def draw(self,canvas):
         global a, play, pause
         
@@ -184,11 +181,18 @@ class Ship:
             
         
     def update(self):
+        self.lifetime = missile_living.val
+        self.freq = freq.val
+        self.missile_speed = missile_speedy.val
+        self.rotate = rotate_speedy.val 
+        self.speed = speedy.val
+        self.acc = acc.val
+        
         if not pause:
             self.ang = angle_to_vector(self.angle)
             if my_ship.thrust:
-                self.vel[0] += self.ang[0]*speedy.val
-                self.vel[1] += self.ang[1]*speedy.val
+                self.vel[0] += self.ang[0]*(speedy.val+self.acc)
+                self.vel[1] += self.ang[1]*(speedy.val+self.acc)
 
             self.pos[0] += self.vel[0]
             self.pos[1] += self.vel[1]
@@ -206,13 +210,12 @@ class Ship:
     def shooting(self):
         global a_missile, start_shooting
         start_shooting += 1
-        print missile_info.get_size()
-        if (start_shooting % self.frequency) == 0 and not pause:
+        if (start_shooting % self.freq) == 0 and not pause:
             a_missile.add(Sprite([self.pos[0] + (self.image_size[0]/2-10)*self.ang[0],
                             self.pos[1] + (self.image_center[1]-10)*self.ang[1]],
                            [self.vel[0]+self.missile_speed*self.ang[0], 
                             self.vel[1]+self.missile_speed*self.ang[1]],
-                            0, 0, missile_image, missile_info, missile_sound))
+                            self.angle, 0, missile_image, missile_info, missile_sound))
        
     def group_collide(self, other_group):
         global explosion_list_pos, explosion_index, LIVES, a, money_earn
@@ -239,7 +242,7 @@ class Sprite:
         self.image_center = info.get_center()
         self.image_size = info.get_size()
         self.radius = info.get_radius()
-        self.lifespan = my_ship.missile_live
+        self.lifespan = my_ship.lifetime
         self.animated = info.get_animated()
         self.age = 0
         if sound:
@@ -259,8 +262,9 @@ class Sprite:
         self.lifespan -= 1
         
     def group_collide(self, other_group):
-        global explosion_list_pos, explosion_index, SCORE, LEVEL, money, money_earn
+        global explosion_list_pos, explosion_index, SCORE, LEVEL, money, money_earn, money_multiply
         collide = False
+        money_multiply = money_mult.val
         for object in list(other_group):
             if (abs(self.pos[0] - object.pos[0]) < self.radius+object.radius) and (abs(self.pos[1] - object.pos[1]) < self.radius+object.radius): 
                 collide = True
@@ -268,7 +272,7 @@ class Sprite:
                 other_group.remove(object)
                 explosion_index = -1
                 SCORE += 10
-                money_earn = 10 + 20*difficult
+                money_earn = (10 + 20*difficult)*money_multiply
                 money += money_earn
                 explosion_sound.play()
         return collide
@@ -278,14 +282,14 @@ def keydown_handler(key):
     global my_ship, start_shooting, pause
     if play:
         if key == simplegui.KEY_MAP['space']:
-            start_shooting = my_ship.frequency -1
+            start_shooting = my_ship.freq -1
             my_ship.shoot = True  
         if key == simplegui.KEY_MAP['up']:
             my_ship.thrust = True
         if key == simplegui.KEY_MAP['left']:
-            my_ship.angle_vel = -my_ship.rotate_speed
+            my_ship.angle_vel = -my_ship.rotate
         if key == simplegui.KEY_MAP['right']:
-            my_ship.angle_vel = my_ship.rotate_speed
+            my_ship.angle_vel = my_ship.rotate
         pause = False    
         if key == 27:
             pause = True
@@ -367,24 +371,31 @@ def draw(canvas):
         if not pause:
             my_ship.update()
             my_ship.group_collide(g_rock)
-        canvas.draw_text('Lives: ' + str(LIVES), [30,30], 30, 'White')
-        canvas.draw_text('Score: ' + str(SCORE), [WIDTH - 150,30], 30, 'White')
+        canvas.draw_text('Lives: ' + str(LIVES), [10,30], 30, 'White')
+        canvas.draw_text('Score: ' + str(SCORE), [WIDTH - 160,30], 30, 'White')
         canvas.draw_text('LVL: ' + str(int(LEVEL)) +' Difficult: ' + str(difficult), [WIDTH/2 - 130,30], 30, 'White')
-        canvas.draw_text('Rocks: ' + str(rocks) +'/'+ str(5 + LEVEL *2), [WIDTH/2 - 80,HEIGHT - 30], 30, 'White')
+        canvas.draw_text('Rocks: ' + str(rocks) +'/'+ str(10 + LEVEL *2), [WIDTH - 150,HEIGHT - 10], 30, 'White')
 
     
     if pause:
-        canvas.draw_image(splash_image, splash_info.get_center(), 
-                          splash_info.get_size(), [WIDTH / 2, HEIGHT / 2], 
-                          splash_info.get_size())
-        canvas.draw_text('Level: ' + str(int(LEVEL)), [WIDTH/2 - 50,400], 30, 'White')
-
-            
+       # canvas.draw_image(splash_image, splash_info.get_center(), 
+       #                   splash_info.get_size(), [WIDTH / 2, HEIGHT / 2], 
+       #                   splash_info.get_size())
+        
+        canvas.draw_image(upgrade_img, [400,300], [800,600], [400,300],[800,600])
+        canvas.draw_text('Level: ' + str(int(LEVEL)), [WIDTH - 250,100], 30, 'White')
+        canvas.draw_text('- For start click any key', [WIDTH - 320,150], 30, 'White')
+        canvas.draw_text('- Shooting: Space', [WIDTH - 320,190], 30, 'White')
+        canvas.draw_text('- Pause: Esc', [WIDTH - 320,230], 30, 'White')
+        canvas.draw_text('- Upgrade your ship!', [WIDTH - 320,270], 30, 'White')
+        canvas.draw_text('$' +str(money), [190,HEIGHT - 87], 24, 'White')
+        for n in upgrade_list:
+            n.draw(canvas)
+        
 def rock_spawner():
     global a_rock, rocks, LEVEL, pause, difficult
     if not pause:
         new_rock_pos = [random.randrange(0,WIDTH), random.randrange(0,HEIGHT)]
-#        print my_ship.radius()
         if (abs(new_rock_pos[0] - my_ship.pos[0]) < my_ship.radius+50) and (abs(new_rock_pos[1] - my_ship.pos[1]) < my_ship.radius+50):
             new_rock_pos[0] += 150   
             new_rock_pos[1] += 150
@@ -397,13 +408,15 @@ def rock_spawner():
             rocks = 0
             pause = True
     
+###############################CLICKER###################    
 def click(pos):
-    global pause, timer, difficult, LEVEL
-    
+    global pause, timer
     if (not play):
         new_game()
-    if pause: 
-        pause = False
+    if pause:
+        for n in upgrade_list:
+            if abs(n.pos[1] - pos[1]) < 15 and abs(n.pos[0] - pos[0]) < 15:
+                n.buy()
         timer.stop()
         if LEVEL < 10:
             timer = simplegui.create_timer(2000 - (difficult*50), rock_spawner)
@@ -428,66 +441,57 @@ def new_game():
     
 # UPGRADE SHIP
 class Upgrade:
-    def __init__(self, name, val, upd_val, upd_cost):
+    def __init__(self, name, val, upd_val, upd_cost, pos, str_conf):
         self.val = val
         self.upd_val = upd_val
         self.upd_cost = upd_cost
         self.rang = 1
         self.name = name
         self.text = 'Upgrade to %s (%s) for $%s' % (self.name, self.rang+1, self.upd_cost)
+        self.pos = pos
+        self.str_conf = str_conf
         
-    def buy(self, button):
+        
+    def buy(self):
         global money
-        print self.upd_cost
         if money >= self.upd_cost:
             self.val += self.upd_val 
             self.rang += 1
             money -= self.upd_cost
             self.upd_cost += 2*self.upd_cost
             self.text = 'Upgrade to %s (%s) for $%s' % (self.name, self.rang+1, self.upd_cost)
-            button.set_text(self.text)
             not_money_label.set_text('')
         else:
             not_money_label.set_text('Not enough money!')
+    def draw(self, canvas):
+        self.text_val = self.val*self.str_conf
+        if self.name != 'Money multiply':
+            self.text_val =int(self.text_val)
+        canvas.draw_text(str(self.text_val), (self.pos[0] - 50, self.pos[1]+8), 25, 'White')
+        canvas.draw_text('$'+str(self.upd_cost), (self.pos[0] + 20, self.pos[1]+8), 25, 'White')
 
-speedy = Upgrade('Speed', speed, 0.05, 150)   
-freq = Upgrade('Frequency', frequency, -5, 100)
-missile_living = Upgrade('Missile live', missile_live, 10, 200)
-rotate_speedy = Upgrade('Rotate_speed', rotate_speed, 0.01, 200)
+speedy = Upgrade('Speed', speed, 0.05, 150, [190,392], 100)   
+freq = Upgrade('Frequency', frequency, -5, 100, [190,138], 1)
+missile_living = Upgrade('Missile live', missile_live, 10, 200, [190,104], 0.1)
+rotate_speedy = Upgrade('Rotate_speed', rotate_speed, 0.01, 200, [190,359], 100)
+missile_speedy = Upgrade('Missile_speed', missile_speed, 0.5, 120, [190,172], 1)
+acc = Upgrade('Acceleration', 0.01, 0.02, 200, [190,424], 100)
+money_mult = Upgrade('Money multiply', money_multiply, 0.1, 100, [244,530], 1)
+upgrade_list = [freq, missile_living, missile_speedy, rotate_speedy, speedy, acc, money_mult]
 
-def add_speed():
-    speedy.buy(add_speed)
-    my_ship.speed = speedy.val
-def add_frequency():
-    freq.buy(add_frequency)
-    my_ship.frequency = freq.val
-def add_missile_live():
-    missile_living.buy(add_missile_live)
-    my_ship.missile_live = missile_living.val
-def add_rotate_speed():
-    rotate_speedy.buy(add_rotate_speed)
-    my_ship.rotate_speed = rotate_speedy.val
-    print my_ship.rotate_speed
-    
+
+   
 # initialize frame
-frame = simplegui.create_frame("Asteroids", WIDTH, HEIGHT)
+
 
 c_speed_label = frame.add_label('Speed: 0')
 money_label = frame.add_label('Money: $0')
 just_label = frame.add_label('_________________________')
 just_label2 = frame.add_label('SHIP CHARACTERISTIC')
-
 speed_label = frame.add_label('Speed: '+str(int(speed*100)))
-add_speed = frame.add_button('Upgrade to Speed (2) for $100', add_speed)
 frequency_label = frame.add_label('Missile frequency: '+str(int(100/frequency)))
-add_frequency = frame.add_button('Upgrade to frequency (2) for $100', add_frequency)
 missile_live_label = frame.add_label('Missile live: '+str(int(100/frequency)))
-add_missile_live = frame.add_button('Upgrade to missile live (2) for $100', add_missile_live)
-
-
 rotate_speed_label = frame.add_label('Rotate_speed: '+str(int(1000*rotate_speed)))
-add_rotate_speed = frame.add_button('Upgrade rotate speed (2) for $100', add_rotate_speed)
-
 not_money_label = frame.add_label('')
 
 # register handlers
