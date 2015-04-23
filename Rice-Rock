@@ -1,7 +1,6 @@
 '''
 TO DO:
 3. Correct nebula fo 8+ LEVELS
-http://www.codeskulptor.org/#user39_w3w4dMqGd7_0.py
 '''
 
 
@@ -14,7 +13,7 @@ import random
 WIDTH = 800
 HEIGHT = 600
 SCORE = 0
-LIVES = 10
+LIVES = 3
 time = 0.5
 rotate_speed = 0.03
 speed = 10 / 100.0
@@ -29,7 +28,7 @@ explosion_index = -1
 play = False
 pause = True
 a = 0
-money = 300000
+money = 0
 update_speed_cost = 100
 update_frequency_cost = 100
 update_missile_live_cost = 100
@@ -88,7 +87,7 @@ debris_image_dict = {0:'',
 debris_image = simplegui.load_image(debris_image_dict[1])
 
 nebula_info = ImageInfo([400, 300], [800, 600])
-nebula_image = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/nebula_blue.f2014.png")
+nebula_image1 = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/nebula_blue.f2014.png")
 nebula_image2 = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/lathrop/nebula_brown.png")
 
 splash_info = ImageInfo([200, 150], [400, 300])
@@ -159,7 +158,18 @@ class Ship:
     
         #[freq, missile_living, missile_speedy, rotate_speedy, speedy, acc]
     def draw(self,canvas):
-        global a, play, pause
+        canvas.draw_image(self.image, self.image_center, self.image_size , self.pos, self.image_size, self.angle)
+        
+    def update(self):
+        global a, play, pause, explosion_index
+        self.lifetime = missile_living.val
+        self.freq = freq.val
+        self.missile_speed = missile_speedy.val
+        self.rotate = rotate_speedy.val 
+        self.speed = speedy.val
+        self.acc = acc.val
+        
+        explosion_index = (explosion_index +1)%25//1    
         
         if self.thrust and not pause:
             self.image_center[0] = self.image_size[0] / 2 + ship_info.size[0]
@@ -167,8 +177,6 @@ class Ship:
         else:
             ship_thrust_sound.rewind()
             self.image_center[0] = self.image_size[0] / 2
-            
-        #canvas.draw_circle(self.pos, 150, 1, "White", "White")
         
         if LIVES < 1:
             pause = True
@@ -178,21 +186,11 @@ class Ship:
             explosion_index_ship = [a % 9//1, (a // 9) % 9]
             self.image_center[0] = 50 + explosion_index_ship[0] * 100 
             self.image_center[1] = 50 + explosion_index_ship[1] * 100 
-        canvas.draw_image(self.image, self.image_center, self.image_size , self.pos, self.image_size, self.angle)
+            
         if a == 80:
             ship_thrust_sound.rewind()
             play = False
             soundtrack.rewind()
-            
-        
-    def update(self):
-        self.lifetime = missile_living.val
-        self.freq = freq.val
-        self.missile_speed = missile_speedy.val
-        self.rotate = rotate_speedy.val 
-        self.speed = speedy.val
-        self.acc = acc.val
-        
         if not pause:
             self.ang = angle_to_vector(self.angle)
             if my_ship.thrust:
@@ -277,10 +275,10 @@ class Sprite:
         self.angle  += self.angle_vel
         self.lifespan -= 1
         
+        
     def group_collide(self, other_group):
         global explosion_list_pos, explosion_index, SCORE, LEVEL, money, money_earn, money_multiply
         collide = False
-        money_multiply = money_mult.val
         for object in list(other_group):
             if (abs(self.pos[0] - object.pos[0]) < self.radius+object.radius) and (abs(self.pos[1] - object.pos[1]) < self.radius+object.radius): 
                 collide = True
@@ -288,48 +286,29 @@ class Sprite:
                 other_group.remove(object)
                 explosion_index = -1
                 SCORE += 10
-                money_earn = (10 + 20*difficult)*money_multiply
+                money_earn = (10 + 20*difficult)*money_mult.val
                 money += money_earn
                 explosion_sound.play()
         return collide
-
-    
-
-
-
            
 def draw(canvas):
     global time, explosion_list_pos, explosion_index, debris_image, splash_image, nebula_image, explosion_image
     
     if play:
-        
-        wtime = (time / 4) % WIDTH
+        time +=1
+        wtime = time/4 % WIDTH
         center = debris_info.get_center()
         size = debris_info.get_size()
         canvas.draw_image(nebula_image, nebula_info.get_center(), nebula_info.get_size(), [WIDTH / 2, HEIGHT / 2], [WIDTH, HEIGHT])
         canvas.draw_image(debris_image, center, size, (wtime - WIDTH / 2, HEIGHT / 2), (WIDTH, HEIGHT))
         canvas.draw_image(debris_image, center, size, (wtime + WIDTH / 2, HEIGHT / 2), (WIDTH, HEIGHT))
-
-        #UPGRADE LABELS, BUTTONS
-        try:
-            speed_label.set_text('Speed: '+str(int(my_ship.speed*100)))
-            frequency_label.set_text('Frequency: '+str(100.0/my_ship.frequency))
-            missile_live_label.set_text('Missile live: '+str(int(my_ship.missile_living)))
-        except:pass
-        if pause: 
-            debris_image = simplegui.load_image(debris_image_dict[int(LEVEL%10)])
-            explosion_image = simplegui.load_image(explosion_image_dict[int(LEVEL%4)])
-            if LEVEL > 4:
-                    nebula_image = nebula_image2
-        else: time += 1
         
         # draw ship and sprites
-        my_ship.pos[0] = my_ship.pos[0] % 800 
-        my_ship.pos[1] = my_ship.pos[1] % 600 
-        my_ship.draw(canvas)
 
-        explosion_index = (explosion_index +1)%25//1
-        if explosion_index == 24: explosion_list_pos = [900,500]
+        my_ship.draw(canvas)
+        
+        if explosion_index == 24: 
+            explosion_list_pos = [900,500]
         expl_pos=[explosion_info.get_center()[0] + explosion_index * explosion_info.get_size()[0], 
                              explosion_info.get_center()[1]]    
         canvas.draw_image(explosion_image, expl_pos, explosion_info.get_size(), explosion_list_pos, explosion_info.get_size())  
@@ -343,17 +322,18 @@ def draw(canvas):
 
         canvas.draw_text('Lives: ' + str(LIVES), [10,30], 30, 'White')
         canvas.draw_text('Score: ' + str(SCORE), [WIDTH - 160,30], 30, 'White')
-        canvas.draw_text('LVL: ' + str(int(LEVEL)) +' Difficult: ' + str(difficult), [WIDTH/2 - 130,30], 30, 'White')
-        canvas.draw_text('Rocks: ' + str(rocks) +'/'+ str(10 + LEVEL *2), [WIDTH - 150,HEIGHT - 10], 30, 'White')
+        canvas.draw_text('LEVEL: ' + str(int(LEVEL)), [WIDTH/2 - 60,30], 30, 'White')
+        canvas.draw_text('Rocks: ' + str(rocks) +'/'+ str(10 + LEVEL *2), [WIDTH - 170,HEIGHT - 10], 30, 'White')
+        canvas.draw_text('Money:$' + str(money), [10,HEIGHT - 10], 30, 'White')
 
-    
     if pause:
+        debris_image = simplegui.load_image(debris_image_dict[int(LEVEL%10)])
+        explosion_image = simplegui.load_image(explosion_image_dict[int(LEVEL%4)])
         if not play:
             canvas.draw_image(splash_image, splash_info.get_center(), 
                           splash_info.get_size(), [WIDTH / 2, HEIGHT / 2], 
                           splash_info.get_size())
         else:
-        
             canvas.draw_image(upgrade_img, [400,300], [800,600], [400,300],[800,600])
             canvas.draw_text('Level: ' + str(int(LEVEL)), [WIDTH - 250,100], 30, 'White')
             canvas.draw_text('- For start click any key', [WIDTH - 320,150], 30, 'White')
@@ -365,10 +345,10 @@ def draw(canvas):
                 n.draw(canvas)
         
 def timer_update():
+
     global a_rock, rocks, LEVEL, pause, difficult, x_time
     if not pause:
         x_time += 1
-        print x_time_division
         if x_time % x_time_division == 0:
             new_rock_pos = [random.randrange(0,WIDTH), random.randrange(0,HEIGHT)]
             if (abs(new_rock_pos[0] - my_ship.pos[0]) < my_ship.radius+50) and (abs(new_rock_pos[1] - my_ship.pos[1]) < my_ship.radius+50):
@@ -404,10 +384,14 @@ def timer_update():
     
 ###############################CLICKER###################    
 def click(pos):
-    global pause, x_time_division
+    global pause, x_time_division, nebula_image
     if (not play):
         new_game()
     if pause:
+        if 4 < LEVEL <= 8: 
+            nebula_image = nebula_image2
+        else:
+            nebula_image = nebula_image1
         i = 0
         for n in upgrade_list:
             if abs(n.pos[1] - pos[1]) < 15 and abs(n.pos[0] - pos[0]) < 15:
@@ -464,7 +448,7 @@ def new_game():
     my_ship.image_center = ship_info.get_center()
     g_rock = set ([])
     a_missile = set([])
-    LIVES = 10
+    LIVES = 1
     timer.start()
     ######soundtrack.play()
     debris_image = simplegui.load_image(debris_image_dict[1])
