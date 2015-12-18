@@ -1,0 +1,90 @@
+import http.client, io, urllib.parse
+import time, threading
+from PIL import Image, ImageEnhance
+from bs4 import BeautifulSoup
+
+url ='www.hackthis.co.uk'
+headerss = {"Host": "www.hackthis.co.uk", "Cookie": "PHPSESSID=6emrb4ib7u4mh3mstm9hn6vn34; ",
+            "Referer": "https://www.hackthis.co.uk/levels/captcha/4",
+            "Connection":"keep-alive",
+            "User-Agent":"Mozilla/5.0 (Windows NT 6.2; WOW64; rv:18.0) Gecko/20100101 Firefox/18.0",
+            "Content-Type": "application/x-www-form-urlencoded"
+            }
+def get_picture():
+
+    connection = http.client.HTTPSConnection("localhost",8080)
+    connection.set_tunnel(url)
+    connection.request("GET","/levels/extras/captcha4.php", headers=headerss)
+    PNG_picture = (connection.getresponse().read())
+    CaptchaImage = Image.open(io.BytesIO(PNG_picture))
+    print('time requesta',str(start-time.time()))
+    return CaptchaImage
+
+def do_better(im):
+    nx, ny = im.size
+    im = im.resize((int(nx*2), int(ny*2)), Image.BICUBIC)
+    enh = ImageEnhance.Contrast(im)
+    im = enh.enhance(1.5)
+    im = im.convert("P")
+    im2 = Image.new("P",im.size,255)
+    return im
+
+def send(text):
+    params = "".join(text)
+    #print(params)
+    params = urllib.parse.quote(params)
+    print(params)
+    params = "answer="+params
+    print(params)
+    connection = http.client.HTTPSConnection("localhost",8080)
+    connection.set_tunnel(url)
+    #connection = http.client.HTTPSConnection("https://www.hackthis.co.uk",443)
+    print('POST in ',str(start - time.time()))
+    connection.request("POST","/levels/captcha/4", params, headers=headerss)
+    response2 = connection.getresponse()
+    soup2 = BeautifulSoup(response2.read(),"html.parser")
+    answer1=(soup2.find("span", class_="strong red"))
+    answer2=(soup2.find("div", class_="msg msg-error"))
+    #print('POST in ',str(start_request - time.time()))
+    if answer1.text == "Incomplete":
+        print("sorrrrrrrry :(")
+        print(str(start-time.time()))
+        print(answer2)
+        #do_it()
+
+    else:
+        print("STOP!")
+
+def replacer(input):
+    global answer
+    answer = ''
+    for x in range(len(input)):
+        answer+={'d':':D',')':':)','p':':p','(':':(',"b":'B)','>':':@',
+                 'o':':o','s':':s','-':':|','/':':/','<':'<3',';':';)',
+                 '.':':@','B':'B)',',':'<3','9':':(','0':':)'}.get(input[x])
+        print(answer)
+    return answer
+
+def do_it():
+    get_picture()
+    im = get_picture()
+    im2 = do_better(im)
+    im2.show()
+    print('before input',str(start-time.time()))
+    answer = input()
+    answer = replacer(answer)
+    send(answer)
+    #print(answer)
+
+def benchmark():
+    start_b=time.time()
+    do_better(get_picture())
+    print(time.time() - start_b)
+
+start=time.time()
+get_picture()
+start=time.time()
+do_it()
+
+#for x in range(10):
+#    benchmark()
