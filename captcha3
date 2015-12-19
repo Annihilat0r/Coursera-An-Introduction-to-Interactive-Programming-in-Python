@@ -1,0 +1,117 @@
+import http.client, io, urllib.parse
+import time
+from PIL import Image, ImageEnhance, ImageChops
+from bs4 import BeautifulSoup
+
+url ='www.hackthis.co.uk'
+headerss = {"Host": "www.hackthis.co.uk", "Cookie": "PHPSESSID=68r5l6evapsn3jdjtvc7s8ov93; ",
+            "Referer": "https://www.hackthis.co.uk/levels/captcha/4",
+            "Connection":"keep-alive",
+            "User-Agent":"Mozilla/5.0 (Windows NT 6.2; WOW64; rv:18.0) Gecko/20100101 Firefox/18.0",
+            "Content-Type": "application/x-www-form-urlencoded"
+            }
+emotions = []
+for x in ('angry','sad','smile','confused','D','glases','heart','noemotions','o','p','s','wink'):
+    emotions.append([Image.open('test/'+str(x)+'.png'),x])
+
+def get_picture():
+    connection = http.client.HTTPSConnection("localhost",8080)
+    connection.set_tunnel(url)
+    connection.request("GET","/levels/extras/captcha3.php", headers=headerss)
+    PNG_picture = (connection.getresponse().read())
+    CaptchaImage = Image.open(io.BytesIO(PNG_picture))
+    return CaptchaImage
+
+def do_better(im):
+    nx, ny = im.size
+    im = im.resize((int(nx*2), int(ny*2)), Image.BICUBIC)
+    enh = ImageEnhance.Contrast(im)
+    im = enh.enhance(1.5)
+    return im
+
+def normalize_big(pic):
+    image_array = []
+    pixels=pic.load()
+    width, height = pic.size
+    binary_ans= ''
+    for x in range(15):
+        image_array.append(pic.crop((20+52*x,22,52*x+54,57)))
+    return image_array
+
+def normalize(pic):
+    image_array = []
+    #pixels=pic.load()
+    width, height = pic.size
+    x = 0
+    while x < width-1:
+        x+=1
+        for y in range(height):
+            if pic.getpixel((x,y))[1] > 60:
+                #print(x,y)
+                #print(pic.getpixel((x,y)))
+                image_array.append(pic.crop((x,y-6,x+17,y+11)))
+                x+=18
+                break
+
+    #pic.crop((x,y-20,x+27,y+20)).show()
+    #image_array.append(pic.crop((x,y-20,x+27,y+20)))
+    #image_array[x].save('test/'+str(x)+'.png', 'PNG')
+
+    return image_array
+
+def replacer(input):
+    answer = ''
+    for x in range(len(input)):
+        answer+={'D':':D','smile':':)','p':':p','sad':':(',"glases":'B)','>':':@',
+                 'o':':o','s':':s','noemotions':':|','confused':':/','<':'<3','wink':';)',
+                 'angry':':@','B':'B)','heart':'<3','9':':(','0':':)'}.get(input[x])
+        print(answer)
+    return answer
+
+def send(text):
+    params = "".join(text)
+    #print(params)
+    params = urllib.parse.quote(params)
+    params = "answer="+params
+    connection = http.client.HTTPSConnection("localhost",8080)
+    connection.set_tunnel(url)
+    #connection = http.client.HTTPSConnection("https://www.hackthis.co.uk",443)
+    connection.request("POST","/levels/captcha/3", params, headers=headerss)
+    response2 = connection.getresponse()
+    soup2 = BeautifulSoup(response2.read(),"html.parser")
+    answer1=(soup2.find("span", class_="strong red"))
+    answer2=(soup2.find("div", class_="msg msg-error"))
+    #print('POST in ',str(start_request - time.time()))
+    if answer1.text == "Incomplete":
+        print("sorrrrrrrry :(")
+        print(answer2)
+        #do_it()
+
+    else:
+        print("STOP!")
+
+image = get_picture()
+image.show()
+image_array = normalize(image)
+answer = []
+diff = [1,2,3,4,5,6,7,8,9,10,11,12]
+for y in image_array:
+    for x in range(12):
+        #emotions[x][0].show()
+        diff[x]=(ImageChops.difference(y, emotions[x][0])) #.save('test/diff/'+str(x)+'.png', 'PNG')
+        diff_x = (diff[x].histogram())
+        #print(diff_x)
+        #print(diff_x[256])
+        sumq = 0
+        for q in range(len(diff_x)):
+            if q == 0 or q == 256:
+                pass
+            else:
+                sumq += diff_x[q]
+        #print(sumq)
+        if sumq < 300:
+            answer.append(emotions[x][1])
+
+answertosend = (replacer(answer))
+print(answertosend)
+send(answertosend)
