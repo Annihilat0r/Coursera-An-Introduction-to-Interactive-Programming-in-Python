@@ -3,9 +3,8 @@ import pytesser.pytesser
 from PIL import Image, ImageEnhance
 from bs4 import BeautifulSoup
 
-url ='www.hackthis.co.uk'
-headerss = {"Host": "www.hackthis.co.uk", "Cookie": "PHPSESSID=rrek2fb0s07vtq0qsoij04duu3; "
-                      "autologin==M%8B%EC%2F%BD%D2%11H%D3%C6bZ%A2%8E%28%E0ml%5D%EEu%2C%9D%17%D5%DA%07%7C%DE%93%02%DC%FE%2C%09%93%2BX%B4%B7%EEB%C0o%98%3A%06%099F%AD%99%A9_%C7.%15%93-%18f%7EU%14; "
+url ='www.%.co.uk'
+headerss = {"Host": "www.%.co.uk", "Cookie": "PHPSESSID=rrek2fb0s07vtq0qsoij04duu3; "
                       "member=1",
             "Referer": "https://www.hackthis.co.uk/levels/captcha/1",
             "Connection":"keep-alive",
